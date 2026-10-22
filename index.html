@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Can We Publish This?</title>
+<meta name="description" content="A classroom game about checking what AI writes against library sources.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,400;1,9..144,600&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   EDIT ME: your library's real tools for the last screen.
+   Leave url as "" to show a reminder instead of a link.
+   ========================================================= */
+</style>
+<script>
+const LIBRARY = {
+  newspaper: { name: "Our newspaper database", url: "" },
+  catalog:   { name: "Our catalog and archives", url: "" }
+};
+</script>
+<style>
+:root{
+  --night:#1B1230; --night-2:#251a3f; --night-3:#33264f;
+  --ink:#F1EBFF; --ink-dim:#B9AED6;
+  --lamp:#F2B544; --lamp-ink:#2a1a00;
+  --paper:#ECE4D0; --paper-ink:#2B2219; --paper-dim:#6d5f4c;
+  --moss:#4F8F5B; --brick:#C4473A; --fog:#8E8BAA;
+  --serif:"Fraunces", Georgia, serif;
+  --sans:"Atkinson Hyperlegible", system-ui, sans-serif;
+  --radius-doc:3px; --radius-btn:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--night);color:var(--ink);font-family:var(--sans);font-size:clamp(17px,1.35vw,24px);line-height:1.45;
+  background-image:radial-gradient(1200px 600px at 50% -10%, #3a2a5c55, transparent 70%);overflow-x:hidden}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--lamp);outline-offset:3px}
+
+/* ---------- frame ---------- */
+.app{min-height:100vh;display:grid;grid-template-rows:auto 1fr auto}
+header{display:flex;align-items:center;gap:1.2em;padding:.9em 2.2vw;border-bottom:1px solid #ffffff14}
+.brand{font-family:var(--serif);font-weight:600;font-size:1.05em;white-space:nowrap}
+.candles{display:flex;gap:.55em;align-items:flex-end;margin-left:auto;margin-right:auto}
+.candle{width:.55em;height:1.2em;border-radius:2px 2px 1px 1px;background:var(--night-3);position:relative}
+.candle.lit{background:#e9dcc0}
+.candle.lit::after{content:"";position:absolute;left:50%;top:-.62em;width:.42em;height:.6em;transform:translateX(-50%);
+  border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:radial-gradient(circle at 50% 70%, #fff3c4, var(--lamp) 55%, #e07a1f);
+  box-shadow:0 0 .7em #f2b544aa}
+.candle.now{outline:2px solid var(--lamp);outline-offset:3px}
+.score{white-space:nowrap;color:var(--ink-dim)}
+.score b{color:var(--lamp);font-size:1.15em}
+
+main{display:flex;align-items:center;justify-content:center;padding:1.6vw 3vw}
+.stage{width:min(1500px,100%)}
+
+footer{display:flex;align-items:center;gap:.8em;padding:.8em 2.2vw;border-top:1px solid #ffffff14}
+.ghost{background:transparent;border:1px solid #ffffff2e;border-radius:10px;padding:.45em .9em;color:var(--ink-dim);font-size:.85em}
+.ghost:hover{color:var(--ink);border-color:#ffffff66}
+.next{margin-left:auto;background:var(--lamp);color:var(--lamp-ink);border:none;border-radius:var(--radius-btn);padding:.6em 1.4em;font-weight:700;font-size:1em}
+.next[disabled]{background:var(--night-3);color:var(--ink-dim);cursor:not-allowed}
+.hint-keys{font-size:.75em;color:var(--ink-dim)}
+
+/* ---------- layouts ---------- */
+.split{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:3.2vw;align-items:start}
+.solo{max-width:62ch;margin:0 auto}
+h1{font-family:var(--serif);font-weight:800;font-size:clamp(2.6em,6vw,5.2em);line-height:.98;letter-spacing:-.02em;font-variation-settings:"opsz" 144}
+h2{font-family:var(--serif);font-weight:600;font-size:clamp(1.55em,2.6vw,2.6em);line-height:1.1;letter-spacing:-.01em;margin-bottom:.45em}
+.lede{font-size:1.15em;color:var(--ink);max-width:46ch}
+.dim{color:var(--ink-dim)}
+.ask{font-size:1.05em;margin:.2em 0 1em;color:var(--ink-dim)}
+.step-tag{color:var(--lamp);font-weight:700;margin-bottom:.4em;font-size:.95em}
+
+/* ---------- paper documents ---------- */
+.doc{background:var(--paper);color:var(--paper-ink);border-radius:var(--radius-doc);padding:1.15em 1.4em;font-family:var(--serif);
+  font-size:1.02em;line-height:1.55;box-shadow:0 1.2em 2.5em #0007, 0 0 0 1px #0000000f inset;position:relative}
+.doc + .doc{margin-top:1.1em}
+.doc .src{font-family:var(--sans);font-size:.78em;color:var(--paper-dim);margin-bottom:.6em}
+.doc .head{font-weight:800;font-size:1.25em;line-height:1.15;margin-bottom:.5em}
+.doc p + p{margin-top:.55em}
+.doc.tilt{transform:rotate(-.6deg)}
+.doc.report{transform:rotate(.4deg)}
+.doc .stamp{position:absolute;top:1em;right:1.1em;font-family:var(--sans);font-weight:700;font-size:.72em;color:var(--brick);border:2px solid var(--brick);border-radius:4px;padding:.1em .45em;transform:rotate(4deg)}
+mark{background:transparent;color:inherit;border-radius:2px;transition:background .5s, box-shadow .5s}
+mark.on{background:#f2b54480;box-shadow:0 0 0 .12em #f2b54480}
+.claimline{cursor:default;border-radius:2px;transition:background .3s}
+.claimline.on{background:#c4473a26;box-shadow:0 0 0 .1em #c4473a26}
+
+/* the quote reveal */
+.rest{background:#4f8f5b55;border-radius:2px}
+.cut{display:inline-block;width:1.4em;border-bottom:2px dashed var(--brick);margin:0 .15em}
+.caret{display:inline-block;width:.08em;height:1em;background:currentColor;vertical-align:-.12em;margin-left:.04em;animation:blink .8s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* ---------- choices ---------- */
+.choices{display:grid;gap:.8em}
+.choices.three{grid-template-columns:repeat(3,1fr)}
+.choice{display:flex;align-items:center;gap:.8em;text-align:left;background:var(--night-2);border:2px solid #ffffff1f;border-radius:var(--radius-btn);
+  padding:.85em 1em;font-size:1.02em;transition:border-color .2s, background .2s, transform .1s}
+.choice:hover:not([disabled]){border-color:var(--lamp)}
+.choice:active:not([disabled]){transform:scale(.99)}
+.choice .ic{flex:none;width:2.1em;height:2.1em;border-radius:50%;display:grid;place-items:center;background:var(--night-3)}
+.choice .ic svg{width:1.15em;height:1.15em;fill:none;stroke:var(--ink);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.choice small{display:block;color:var(--ink-dim);font-size:.82em}
+.choice.wrong{border-color:var(--brick);opacity:.6}
+.choice.right{border-color:var(--moss);background:#4f8f5b22}
+.choice[disabled]{cursor:default}
+.verdict{justify-content:center;text-align:center;font-weight:700;padding:1.1em .6em;border-width:3px}
+.verdict.v-sup{border-color:var(--moss)} .verdict.v-con{border-color:var(--brick)} .verdict.v-unk{border-color:var(--fog)}
+.verdict.v-sup:hover:not([disabled]){background:#4f8f5b33} .verdict.v-con:hover:not([disabled]){background:#c4473a33} .verdict.v-unk:hover:not([disabled]){background:#8e8baa33}
+.verdict.picked{outline:3px solid var(--ink);outline-offset:2px}
+
+.feedback{margin-top:1.1em;padding:1em 1.2em;border-radius:12px;background:var(--night-2);border-left:6px solid var(--fog);animation:rise .35s ease-out}
+.feedback.good{border-left-color:var(--moss)} .feedback.bad{border-left-color:var(--brick)}
+.feedback b{display:block;font-size:1.08em;margin-bottom:.15em}
+.feedback .act{margin-top:.8em}
+.btn-lamp{background:var(--lamp);color:var(--lamp-ink);border:none;border-radius:10px;padding:.5em 1em;font-weight:700}
+@keyframes rise{from{opacity:0;transform:translateY(.4em)}to{opacity:1;transform:none}}
+
+/* evidence board strip */
+.board{display:grid;grid-template-columns:repeat(4,1fr);gap:.5em;margin-bottom:1.2em}
+.slot{border:1px dashed #ffffff33;border-radius:10px;padding:.45em .6em;font-size:.78em;color:var(--ink-dim);min-height:3.1em}
+.slot.now{border-color:var(--lamp);color:var(--ink)}
+.slot.sup{border:1px solid var(--moss);background:#4f8f5b22;color:var(--ink)}
+.slot.con{border:1px solid var(--brick);background:#c4473a22;color:var(--ink)}
+.slot.unk{border:1px solid var(--fog);background:#8e8baa22;color:var(--ink)}
+.slot em{font-style:normal;display:block;font-weight:700;font-size:.92em}
+
+/* claim card */
+.claim{font-family:var(--serif);font-size:1.3em;line-height:1.25;padding:.6em .85em;border-radius:12px;background:var(--night-2);border:1px solid #ffffff22;margin-bottom:1em}
+.claim .n{font-family:var(--sans);font-size:.55em;color:var(--lamp);font-weight:700;display:block;margin-bottom:.2em}
+
+/* sentences (spot the mistake) */
+.sentences{display:grid;gap:.6em}
+.sent{display:flex;gap:.9em;align-items:baseline;text-align:left;background:var(--paper);color:var(--paper-ink);border:3px solid transparent;border-radius:8px;
+  padding:.8em 1em;font-family:var(--serif);font-size:1.08em;line-height:1.4}
+.sent .k{font-family:var(--sans);font-weight:700;color:var(--paper-dim)}
+.sent:hover:not([disabled]){border-color:var(--lamp)}
+.sent.right{border-color:var(--brick);background:#f4d9d3}
+.sent.ok{border-color:var(--moss)}
+.sent[disabled]{cursor:default}
+
+/* prompts */
+.prompts{display:grid;grid-template-columns:1fr 1fr;gap:1.4em}
+.prompt{text-align:left;background:var(--paper);color:var(--paper-ink);border:3px solid transparent;border-radius:var(--radius-doc);padding:1.2em 1.3em;font-family:var(--serif);font-style:italic;font-size:1.1em;line-height:1.5}
+.prompt .who{font-family:var(--sans);font-style:normal;font-weight:700;font-size:.8em;color:var(--paper-dim);display:block;margin-bottom:.5em}
+.prompt:hover:not([disabled]){border-color:var(--lamp)}
+.prompt[disabled]{cursor:default}
+.prompt .bad{transition:background .5s}
+.prompts.shown .bad{background:#c4473a40}
+.prompts.shown .good{background:#4f8f5b40}
+
+/* title screen */
+.title-wrap{display:grid;grid-template-columns:1.2fr .9fr;gap:4vw;align-items:center}
+.title-wrap .lede{margin:1.1em 0 1.6em}
+.start{background:var(--lamp);color:var(--lamp-ink);border:none;border-radius:var(--radius-btn);padding:.8em 1.6em;font-weight:700;font-size:1.15em}
+.fine{margin-top:1.4em;font-size:.8em;color:var(--ink-dim)}
+.plan{list-style:none;counter-reset:s;display:grid;gap:.5em;margin-top:1em}
+.plan li{counter-increment:s;display:flex;gap:.8em;align-items:baseline}
+.plan li::before{content:counter(s);flex:none;width:1.7em;height:1.7em;border-radius:50%;display:inline-grid;place-items:center;background:var(--night-3);color:var(--lamp);font-weight:700;font-size:.85em}
+
+/* finale */
+.steps4{display:grid;grid-template-columns:repeat(4,1fr);gap:1em;margin:1.2em 0 1.6em}
+.step4{background:var(--night-2);border-radius:14px;padding:1em;border:1px solid #ffffff1a}
+.step4 .num{font-family:var(--serif);font-weight:800;font-size:2em;color:var(--lamp);line-height:1}
+.links{display:flex;gap:1em;flex-wrap:wrap}
+.links a,.links span{display:inline-block;padding:.7em 1.1em;border-radius:12px;background:var(--night-2);border:1px solid #ffffff2a;color:var(--ink);text-decoration:none}
+.links a:hover{border-color:var(--lamp)}
+.links span{color:var(--ink-dim);font-style:italic}
+.final-score{font-family:var(--serif);font-size:1.3em;margin-bottom:.4em}
+
+/* notes drawer */
+.notes{position:fixed;right:1.2vw;bottom:4.2em;width:min(34em,92vw);max-height:60vh;overflow:auto;background:#0f0a1c;border:1px solid var(--lamp);
+  border-radius:12px;padding:1em 1.2em;font-size:.82em;line-height:1.5;box-shadow:0 1em 3em #000a;display:none;z-index:5}
+.notes.open{display:block}
+.notes h3{font-size:1em;color:var(--lamp);margin-bottom:.4em}
+.notes p+p{margin-top:.5em}
+
+@media (max-width:900px){
+  .split,.title-wrap,.prompts{grid-template-columns:minmax(0,1fr)}
+  footer{flex-wrap:wrap}
+  .hint-keys{display:none}
+  .doc.tilt,.doc.report{transform:none}
+  .choices.three,.steps4{grid-template-columns:1fr 1fr}
+  .board{grid-template-columns:1fr 1fr}
+  .candles{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none !important;animation:none !important}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">Can We Publish This?</div>
+    <div class="candles" id="candles" aria-label="Progress"></div>
+    <div class="score" id="score" aria-live="polite">Class score <b>0</b></div>
+  </header>
+  <main><div class="stage" id="stage" aria-live="polite"></div></main>
+  <footer>
+    <button class="ghost" id="back">Back</button>
+    <button class="ghost" id="notesBtn" aria-expanded="false">Facilitator notes (N)</button>
+    <button class="ghost" id="fsBtn">Full screen (F)</button>
+    <span class="hint-keys">Right arrow: next</span>
+    <button class="next" id="next">Next</button>
+  </footer>
+</div>
+<aside class="notes" id="notes" aria-label="Facilitator notes"></aside>
+
+<script>
+/* ---------------- icons ---------------- */
+const ICON = {
+  news:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="15" height="16" rx="1.5"/><path d="M18 8h3v10a2 2 0 0 1-2 2"/><path d="M6 8h9M6 12h9M6 16h6"/></svg>',
+  archive:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9"/><path d="M10 13h4"/></svg>',
+  book:'<svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5M8 7h7"/></svg>',
+  ai:'<svg viewBox="0 0 24 24"><rect x="5" y="8" width="14" height="11" rx="2"/><path d="M12 4v4M9 13h.01M15 13h.01M9.5 16.5h5"/></svg>',
+  search:'<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg>'
+};
+
+/* ---------------- content ---------------- */
+const EVIDENCE = {
+  E1:`<div class="src">Newspaper archive · E1</div>
+      <div class="head">The Northbridge Lantern, November 2, 1923</div>
+      <p><mark data-m="returned">Clara Vale returned safely Thursday morning after a missed railway connection delayed her trip.</mark> Friends had expected her Wednesday evening.</p>
+      <p>“<mark data-m="quote">No trace of Miss Vale was ever found in the station waiting room that evening, but she arrived safely on the morning train</mark>,” said the residence supervisor.</p>
+      <p>Vale, who lives in <mark data-m="room">Briar Hall Room 213</mark>, thanked friends for their concern.</p>`,
+  E2:`<div class="src">College archives · E2</div>
+      <div class="head">Photograph record BH 047</div>
+      <p><b>Title:</b> Student at a Briar Hall window<br><b>Date:</b> About 1925</p>
+      <p>A figure at a third floor window wearing a light colored scarf. <mark data-m="identity">Identity unknown.</mark> Photographer unknown.</p>
+      <p><b>Note:</b> <mark data-m="opened">Briar Hall opened in 1891 as a student residence</mark> for Northbridge College.</p>`,
+  E3:`<div class="src">Library catalog · E3</div>
+      <div class="head">The librarian replies</div>
+      <p>“I searched our catalog and other libraries’ catalogs for <i>Shadows of Northbridge</i> by Elias Wren. <mark data-m="nobook">I found no record of it.</mark></p>
+      <p><mark data-m="notproof">That doesn’t prove the book doesn’t exist. But we can’t use the citation until we find the book and read page 84.</mark>”</p>`
+};
+
+const PLACES = [
+  {id:"newspaper", ev:"E1", icon:"news", label:"Newspaper archive", sub:"Old campus papers, searchable by name and date"},
+  {id:"archives", ev:"E2", icon:"archive", label:"College archives", sub:"Photos, records, and notes about campus"},
+  {id:"catalog", ev:"E3", icon:"book", label:"Library catalog or a librarian", sub:"Find out whether a book exists"}
+];
+
+const CLAIMS = [
+  { short:"The building", text:"Briar Hall opened in 1891 as a student residence.", place:"archives", ev:"E2", answer:"sup", mark:["opened"], line:"c1",
+    hints:{ newspaper:"A 1923 newspaper won’t tell us when the building opened decades earlier. Where would a college keep records about its own buildings?",
+            catalog:"The catalog finds books. Is there a record about the building itself somewhere on campus?" },
+    why:"The archive note says Briar Hall opened in 1891 as a student residence. Not everything in the report is wrong, and that’s part of what makes it convincing." },
+  { short:"The disappearance", text:"Clara vanished in 1923. The Lantern reported, “No trace of Miss Vale was ever found<span class=\"rest\" id=\"rest\" hidden></span>.”", place:"newspaper", ev:"E1", answer:"con", mark:["returned","quote"], line:"c2", reveal:true,
+    hints:{ archives:"Archives might help later, but the claim quotes a specific newspaper. Where could we read that paper?",
+            catalog:"The catalog finds books, not 1923 news stories. Where are old campus newspapers kept?" },
+    why:"She came home the next morning after missing her train. The quote is real, but the AI cut the sentence in half and reversed its meaning." },
+  { short:"The photo", text:"An archival photograph shows Clara Vale.", place:"archives", ev:"E2", answer:"unk", mark:["identity"], line:"c3",
+    hints:{ newspaper:"A photograph in the college’s collection would be described where the college keeps its records. Try another place.",
+            catalog:"The catalog finds books. Where would the college describe a photo it owns?" },
+    why:"The record says identity unknown. A scarf doesn’t identify anyone, and the record says “light colored,” not white. We can’t say it’s Clara, and we can’t say it isn’t." },
+  { short:"The book", text:"Elias Wren’s book confirms Clara’s disappearance.", place:"catalog", ev:"E3", answer:"unk", mark:["nobook","notproof"], line:"c4",
+    hints:{ newspaper:"The paper is from 1923, and the book is supposedly from 1987. Where would you check whether a book exists?",
+            archives:"Archives hold the college’s own records. Where do you look up a published book?" },
+    why:"The librarian couldn’t find the book. That doesn’t prove it doesn’t exist, but a page number in AI-written text isn’t evidence. It stays unknown until someone reads the book." }
+];
+const VERDICTS = {sup:"Supported", con:"Contradicted", unk:"Still unknown"};
+
+const REPORT = `<span class="claimline" data-l="c1">Briar Hall opened in 1891 as a student residence at Northbridge College.</span>
+  On Halloween night in 1923, <span class="claimline" data-l="c2a">student Clara Vale disappeared from Room 313 and was never seen again.</span>
+  The college sealed the room the next morning, and nobody has entered it since.</p>
+  <p>The <i>Northbridge Lantern</i> reported on November 2, 1923: <span class="claimline" data-l="c2">“No trace of Miss Vale was ever found.”</span>
+  Students soon began reporting footsteps in the locked room.</p>
+  <p><span class="claimline" data-l="c3">An archival photograph shows Clara standing at a third floor window.</span> Archivists identified her by her white scarf.
+  <span class="claimline" data-l="c4">Historian Dr. Elias Wren confirmed the disappearance in his 1987 book, <i>Shadows of Northbridge</i>, page 84.</span>`;
+
+/* ---------------- state ---------------- */
+const S = { i:0, score:0, scored:new Set(), board:{} };
+const stage = document.getElementById('stage');
+const nextBtn = document.getElementById('next');
+const backBtn = document.getElementById('back');
+const notesEl = document.getElementById('notes');
+const notesBtn = document.getElementById('notesBtn');
+
+function award(key, firstTry){
+  if (S.scored.has(key)) return;
+  S.scored.add(key);
+  if (firstTry) S.score++;
+  document.querySelector('#score b').textContent = S.score;
+}
+const MAX_SCORE = 12;
+
+function setNext(enabled, label){ nextBtn.disabled = !enabled; nextBtn.textContent = label || 'Next'; }
+function feedback(el, kind, title, body, extra){
+  const f = document.createElement('div');
+  f.className = 'feedback ' + kind;
+  f.innerHTML = `<b>${title}</b><div>${body}</div>` + (extra || '');
+  el.appendChild(f); return f;
+}
+function lightMarks(root, names){ names.forEach(n => root.querySelectorAll(`mark[data-m="${n}"]`).forEach(m => m.classList.add('on'))); }
+function boardHTML(cur){
+  return `<div class="board" aria-label="Evidence board">${CLAIMS.map((c,k)=>{
+    const v = S.board[k]; const cls = v ? v : (k===cur ? 'now' : '');
+    return `<div class="slot ${cls}"><em>${c.short}</em>${v ? VERDICTS[v] : (k===cur ? 'Checking now' : 'Not checked yet')}</div>`;}).join('')}</div>`;
+}
+
+/* ---------------- screens ---------------- */
+const screens = [];
+
+/* Title */
+screens.push({ notes:`<p>Leave this up as people sit down.</p><p>Say: “Our podcast wants to air a ghost story that an AI wrote. Your job is to check it and decide what we can publish.” The class votes on every decision; you click their answer. The score counts first-try answers.</p><p>Everything here is invented: the college, the people, the records, and the AI text.</p>`,
+render(){
+  stage.innerHTML = `<div class="title-wrap">
+    <div><h1>Can We Publish This?</h1>
+      <p class="lede">Our podcast wants to air a ghost story an AI wrote. Before we record, the class has to check it against real sources and decide what we can publish.</p>
+      <button class="start" id="go">Open the case</button>
+      <p class="fine">A classroom game about checking AI writing. The college, people, and records are invented.</p></div>
+    <div><p class="dim">What we’ll do</p>
+      <ol class="plan"><li>Read the AI-written report</li><li>Check four claims against library sources</li><li>Use AI the right way</li><li>Catch the mistake it still makes</li><li>Choose an opening we can publish</li></ol></div></div>`;
+  document.getElementById('go').onclick = go.bind(null, 1);
+  setNext(true, 'Open the case');
+}});
+
+/* Report */
+screens.push({ notes:`<p>Read the report aloud with full spooky drama. The bigger the build-up, the funnier the reveal.</p><p>Ask: “What makes this sound trustworthy?” Expect exact dates, a room number, a named newspaper, a direct quote, a historian, a page number.</p><p>Say: “Sounding specific isn’t the same as being true. Let’s check.”</p>`,
+render(){
+  stage.innerHTML = `<div class="split">
+    <div class="doc report"><span class="stamp">Not yet checked</span><div class="src">Written by our AI assistant</div><p>${REPORT}</p></div>
+    <div><p class="step-tag">Read the report</p><h2>It sounds convincing. Why?</h2>
+      <p class="ask">Talk about it as a class: what details make this sound trustworthy?</p>
+      <button class="choice" id="reveal"><span class="ic">${ICON.search}</span><span>Show what we’ll check<small>Highlights the four claims</small></span></button>
+      <div id="fb"></div></div></div>`;
+  document.getElementById('reveal').onclick = (e) => {
+    e.currentTarget.disabled = true;
+    stage.querySelectorAll('.claimline').forEach(l => l.classList.add('on'));
+    feedback(document.getElementById('fb'), '', 'Specific isn’t the same as true.', 'Dates, quotes, and page numbers make writing sound credible. We still have to check each one. Four claims are highlighted.');
+  };
+  setNext(true, 'Start checking');
+}});
+
+/* Claim rounds */
+CLAIMS.forEach((c, k) => {
+  screens.push({ notes:`<p>Claim ${k+1}: ${c.short}. Ask: “Where would you look?” Take a quick vote, then click the class’s choice. A wrong place gives a hint; try again.</p>
+    <p>Then read the evidence aloud and vote: Supported, Contradicted, or Still unknown. Ask someone to point to the exact words.</p>
+    <p><b>Answer:</b> ${VERDICTS[c.answer]}. ${c.why}</p>${c.reveal ? '<p><b>Big moment:</b> after the verdict, click “Read the whole sentence.” Let the room react.</p>' : ''}${k===1 ? '<p>Right after this round, the game asks “Can’t we just ask AI to look it up?”</p>' : ''}`,
+  render(){
+    let placeTries = 0, verdictTries = 0;
+    stage.innerHTML = `${boardHTML(k)}<div class="split">
+      <div id="docside"><div class="claim"><span class="n" id="claimlabel">Claim ${k+1} of 4</span>${c.text}</div><div id="evi"></div></div>
+      <div id="qside"><p class="step-tag">Check the claims</p><h2>Where would you look?</h2>
+        <p class="ask">Vote, then click the class’s choice.</p>
+        <div class="choices">${PLACES.map(p=>`<button class="choice" data-p="${p.id}"><span class="ic">${ICON[p.icon]}</span><span>${p.label}<small>${p.sub}</small></span></button>`).join('')}</div>
+        <div id="fb"></div></div></div>`;
+    setNext(false, 'Next claim');
+    const fb = document.getElementById('fb');
+    stage.querySelectorAll('[data-p]').forEach(btn => btn.onclick = () => {
+      placeTries++;
+      fb.innerHTML = '';
+      if (btn.dataset.p !== c.place){
+        btn.classList.add('wrong'); btn.disabled = true;
+        feedback(fb, 'bad', 'Not the best place for this one.', c.hints[btn.dataset.p]);
+        return;
+      }
+      award('place'+k, placeTries===1);
+      btn.classList.add('right');
+      stage.querySelectorAll('[data-p]').forEach(b => b.disabled = true);
+      showEvidence();
+    });
+    function showEvidence(){
+      document.getElementById('evi').innerHTML = `<div class="doc tilt">${EVIDENCE[c.ev]}</div>`;
+      document.getElementById('qside').innerHTML = `<p class="step-tag">Check the claims</p><h2>What does the evidence say?</h2>
+        <p class="ask">Read it aloud. Then vote: can we publish this claim?</p>
+        <div class="choices three">
+          <button class="choice verdict v-sup" data-v="sup">Supported</button>
+          <button class="choice verdict v-con" data-v="con">Contradicted</button>
+          <button class="choice verdict v-unk" data-v="unk">Still unknown</button></div>
+        <div id="fb2"></div>`;
+      const fb2 = document.getElementById('fb2');
+      stage.querySelectorAll('[data-v]').forEach(btn => btn.onclick = () => {
+        verdictTries++;
+        fb2.innerHTML = '';
+        if (btn.dataset.v !== c.answer){
+          btn.disabled = true; btn.style.opacity = .45;
+          const nudge = { sup:"Does the record actually say this? Look for the exact words.", con:"Does the record say the opposite, or does it just not answer the question?", unk:"Read again: does the record settle this one way or the other?" }[btn.dataset.v];
+          feedback(fb2, 'bad', 'Look closer.', nudge);
+          return;
+        }
+        award('verdict'+k, verdictTries===1);
+        btn.classList.add('picked');
+        stage.querySelectorAll('[data-v]').forEach(b => b.disabled = true);
+        S.board[k] = c.answer;
+        lightMarks(document.getElementById('evi'), c.mark);
+        const extra = c.reveal ? `<div class="act"><button class="btn-lamp" id="whole">Read the whole sentence</button></div>` : '';
+        feedback(fb2, 'good', `${VERDICTS[c.answer]}.`, c.why, extra);
+        stage.querySelector('.board').outerHTML = boardHTML(-1);
+        if (c.reveal){ setupReveal(); } else setNext(true, k===3 ? 'Next' : 'Next claim');
+      });
+    }
+    function setupReveal(){
+      setNext(false);
+      document.getElementById('whole').onclick = (e) => {
+        e.currentTarget.remove();
+        document.getElementById('claimlabel').textContent = 'Claim 2, with the whole sentence the AI cut off';
+        document.getElementById('rest').hidden = false;
+        const full = " in the station waiting room that evening, but she arrived safely on the morning train";
+        const rest = document.getElementById('rest');
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches){ rest.textContent = full; }
+        else {
+          let n = 0; const caret = document.createElement('span'); caret.className='caret';
+          rest.after(caret);
+          const t = setInterval(() => { n++; rest.textContent = full.slice(0,n); if (n >= full.length){ clearInterval(t); setTimeout(()=>caret.remove(), 900); } }, 38);
+        }
+        setNext(true, 'Next claim');
+      };
+    }
+  }});
+
+  /* After claim 2: ask AI interlude */
+  if (k === 1) screens.push({ notes:`<p>This is the central idea of the session. Let students argue before you click.</p><p>Say: “AI predicts the next word from patterns. It can write a convincing sentence without checking it. Writing an answer isn’t the same as researching a question.”</p><p>If someone mentions AI tools that show links: “Great. Open the link and check it says what the AI claims. That’s exactly what we just did with the quote.”</p>`,
+  render(){
+    let tries = 0;
+    stage.innerHTML = `<div class="solo"><p class="step-tag">Quick question from the producer</p>
+      <h2>“Can’t we just ask the AI to look up the old newspaper? It’d be faster.”</h2>
+      <p class="ask">What should we tell the producer?</p>
+      <div class="choices">
+        <button class="choice" data-a="0"><span class="ic">${ICON.ai}</span><span>Sure, the AI will find the article for us</span></button>
+        <button class="choice" data-a="1"><span class="ic">${ICON.search}</span><span>No. The AI writes likely-sounding text; it doesn’t go find the paper. We find the source first.</span></button>
+        <button class="choice" data-a="2"><span class="ic">${ICON.ai}</span><span>Yes, if we ask it to be accurate</span></button></div>
+      <div id="fb"></div></div>`;
+    setNext(false);
+    const fb = document.getElementById('fb');
+    stage.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
+      tries++; fb.innerHTML = '';
+      if (b.dataset.a !== '1'){ b.classList.add('wrong'); b.disabled = true;
+        feedback(fb, 'bad', 'That’s how the report went wrong.', b.dataset.a==='0' ? 'Remember the quote? The AI produced real-looking words with the meaning reversed.' : 'Asking for accuracy doesn’t give the AI a newspaper to read. It still predicts likely words.'); return; }
+      award('askai', tries===1); b.classList.add('right'); stage.querySelectorAll('[data-a]').forEach(x=>x.disabled=true);
+      feedback(fb, 'good', 'Right. Writing an answer isn’t researching a question.', 'AI predicts the next word from patterns, so it can sound sure without checking anything. We find sources through the library first. Then AI can help us work with them.');
+      setNext(true, 'Back to the claims');
+    });
+  }});
+});
+
+/* Prompts */
+screens.push({ notes:`<p>Ask the class to vote: which prompt would you trust? Then point out the highlighted phrases.</p><p>The first prompt demanded a quote and a citation whether or not they exist, told the AI to “fill in the gaps,” and banned uncertainty. The better one supplies the sources, sets limits, and asks for labels.</p>`,
+render(){
+  let tries = 0;
+  stage.innerHTML = `<p class="step-tag">Use AI the right way</p><h2>Now we have sources. Which prompt would you trust?</h2>
+    <p class="ask">Vote, then click the class’s choice.</p>
+    <div class="prompts" id="pp">
+      <button class="prompt" data-q="bad"><span class="who">The prompt that wrote the report</span>“Write a spooky, factual introduction about the ghost of Briar Hall. Include <span class="bad">a newspaper quotation and a historian’s book citation</span>. <span class="bad">Fill in the gaps.</span> <span class="bad">Don’t slow the story down with uncertainty.</span>”</button>
+      <button class="prompt" data-q="good"><span class="who">A new prompt</span>“Using <span class="good">only sources E1–E3 below</span>, summarize what they say about Briar Hall. <span class="good">Don’t invent details, quotes, or citations.</span> <span class="good">Label each fact with its source.</span> <span class="good">If the sources don’t say, tell us.</span>”</button>
+    </div><div id="fb"></div>`;
+  setNext(false);
+  const fb = document.getElementById('fb');
+  stage.querySelectorAll('[data-q]').forEach(b => b.onclick = () => {
+    tries++; fb.innerHTML='';
+    if (b.dataset.q === 'bad'){ b.disabled = true; b.style.opacity=.5; feedback(fb,'bad','That’s the one that caused the problems.','Look at what it asks for: a quote and a citation whether or not they exist, and no room for “we don’t know.”'); return; }
+    award('prompt', tries===1);
+    stage.querySelectorAll('[data-q]').forEach(x=>x.disabled=true);
+    document.getElementById('pp').classList.add('shown');
+    feedback(fb,'good','The new prompt gives AI our sources and tells it where to stop.','Red: what invited the made-up details. Green: the sources, the limits, and labels we can check.');
+    setNext(true,'See what AI wrote');
+  });
+}});
+
+/* Spot the mistake */
+screens.push({ notes:`<p>Read each sentence aloud. Ask: “Which one can’t we publish?”</p><p><b>Answer:</b> sentence 3. “Almost certainly” sounds careful but it’s a guess; the archive says identity unknown. Fix: delete it, or say “The archive does not identify the person.”</p><p>Then say: “The better prompt fixed most of the problems. One still slipped through. AI can get things wrong even with a good prompt. That’s why we need both.”</p>`,
+render(){
+  let tries = 0;
+  const S4 = [
+    ["Briar Hall opened as a student residence in 1891. [E2]", "Supported: the archive note says exactly this."],
+    ["A 1923 campus newspaper reports that Clara Vale returned safely after a railway delay. [E1]", "Supported: that’s what the Lantern says."],
+    ["An archival photograph shows a figure at a third floor window that is almost certainly Clara. [E2]", ""],
+    ["The book cited in the earlier report could not be found in the library catalog. [E3]", "Supported: that’s what the librarian found."]];
+  stage.innerHTML = `<div class="split"><div><p class="step-tag">Use AI the right way</p><h2>The new prompt gave us this. Which sentence can’t we publish?</h2>
+    <div class="sentences">${S4.map((s,i)=>`<button class="sent" data-s="${i}"><span class="k">${i+1}</span><span>${s[0]}</span></button>`).join('')}</div></div>
+    <div><div id="fb"></div></div></div>`;
+  setNext(false);
+  const fb = document.getElementById('fb');
+  stage.querySelectorAll('[data-s]').forEach(b => b.onclick = () => {
+    tries++; fb.innerHTML=''; const i = +b.dataset.s;
+    if (i !== 2){ b.classList.add('ok'); b.disabled = true; feedback(fb,'bad','This one checks out.', S4[i][1] + ' Keep looking.'); return; }
+    award('spot', tries===1);
+    b.classList.add('right'); stage.querySelectorAll('[data-s]').forEach(x=>x.disabled=true);
+    feedback(fb,'good','Sentence 3 can’t be published.','“Almost certainly” sounds careful, but it’s a guess. The archive says the identity is unknown. Fix it: “The archive does not identify the person.”');
+    feedback(fb,'','A good prompt cuts down mistakes. Checking catches the rest.','The new prompt fixed the fake disappearance and the unverified book. One guess still slipped through, so we need both.');
+    setNext(true,'Choose our opening');
+  });
+}});
+
+/* Choose the opening */
+screens.push({ notes:`<p>Vote on the opening. Option A adds “has housed students ever since,” which no source says. Option C brings back the photo guess.</p><p>Extra time: have groups write their own two-sentence opening with labels and read it aloud like they’re on air. Spooky tone is fine; new facts aren’t.</p>`,
+render(){
+  let tries = 0;
+  const O = [
+    ["Briar Hall has housed students ever since it opened in 1891 [E2], and in 1923 a student named Clara Vale vanished there, never to be seen again [E1].", "Two problems: no source says it has housed students ever since, and E1 says Clara came home."],
+    ["Briar Hall opened its doors to students in 1891 [E2]. Our ghost story says Clara Vale vanished there in 1923, but the campus paper tells a twist ending: she missed her train and came home the next morning [E1].", ""],
+    ["Briar Hall opened in 1891 [E2], and an old photo shows Clara Vale still watching from a third floor window [E2].", "The archive says the identity is unknown. That’s the same guess we just caught."]];
+  stage.innerHTML = `<p class="step-tag">Write the opening</p><h2>Which opening can the podcast publish?</h2><p class="ask">All three sound good. Only one is backed by the evidence.</p>
+    <div class="sentences">${O.map((o,i)=>`<button class="sent" data-o="${i}"><span class="k">${'ABC'[i]}</span><span>${o[0]}</span></button>`).join('')}</div><div id="fb"></div>`;
+  setNext(false);
+  const fb = document.getElementById('fb');
+  stage.querySelectorAll('[data-o]').forEach(b => b.onclick = () => {
+    tries++; fb.innerHTML=''; const i = +b.dataset.o;
+    if (i !== 1){ b.classList.add('right'); b.disabled = true; feedback(fb,'bad','Not this one.', O[i][1]); return; }
+    award('opening', tries===1);
+    b.classList.add('ok'); stage.querySelectorAll('[data-o]').forEach(x=>x.disabled=true);
+    feedback(fb,'good','We can publish this.','Every fact has a source, and it’s still spooky. The tone changed; the facts didn’t.');
+    setNext(true,'Wrap up');
+  });
+}});
+
+/* Finale */
+screens.push({ notes:`<p>Click your library’s real tools and run one search. Ask: “What replaces these evidence cards in your own research?”</p><p>End by asking each person to name one of the four steps they’ll use this week.</p><p>To set the links, edit LIBRARY near the top of index.html.</p>`,
+render(){
+  const link = (o) => o.url ? `<a href="${o.url}" target="_blank" rel="noopener">${o.name}</a>` : `<span>${o.name}: add a link in index.html</span>`;
+  stage.innerHTML = `<p class="final-score">Class score: ${S.score} of ${MAX_SCORE} on the first try.</p>
+    <h2>The episode is saved. Here’s how you did it.</h2>
+    <div class="steps4">
+      <div class="step4"><div class="num">1</div>Find sources through the library</div>
+      <div class="step4"><div class="num">2</div>Read and evaluate them</div>
+      <div class="step4"><div class="num">3</div>Give them to AI with clear limits</div>
+      <div class="step4"><div class="num">4</div>Check what it says</div></div>
+    <p class="dim" style="margin-bottom:.6em">Now try the real thing:</p>
+    <div class="links">${link(LIBRARY.newspaper)}${link(LIBRARY.catalog)}</div>
+    <p class="fine">Before you go: name one of these steps you’ll use this week. <button class="ghost" id="again" style="margin-left:.6em">Play again</button></p>`;
+  document.getElementById('again').onclick = () => { S.score=0; S.scored.clear(); S.board={}; document.querySelector('#score b').textContent=0; go(0); };
+  setNext(false, 'Done');
+}});
+
+/* ---------------- navigation ---------------- */
+const candles = document.getElementById('candles');
+function drawCandles(){
+  candles.innerHTML = screens.map((_,j)=>`<span class="candle ${j<=S.i?'lit':''} ${j===S.i?'now':''}" aria-hidden="true"></span>`).join('');
+  candles.setAttribute('aria-label', `Screen ${S.i+1} of ${screens.length}`);
+}
+function go(n){
+  S.i = Math.max(0, Math.min(screens.length-1, n));
+  screens[S.i].render();
+  notesEl.innerHTML = `<h3>Facilitator notes</h3>${screens[S.i].notes}`;
+  backBtn.disabled = S.i === 0;
+  drawCandles();
+  window.scrollTo(0,0);
+}
+nextBtn.onclick = () => { if (!nextBtn.disabled) go(S.i+1); };
+backBtn.onclick = () => go(S.i-1);
+function toggleNotes(){ const o = notesEl.classList.toggle('open'); notesBtn.setAttribute('aria-expanded', o); }
+notesBtn.onclick = toggleNotes;
+function toggleFS(){ if (!document.fullscreenElement) document.documentElement.requestFullscreen?.(); else document.exitFullscreen?.(); }
+document.getElementById('fsBtn').onclick = toggleFS;
+document.addEventListener('keydown', e => {
+  if (e.target.closest('input,textarea')) return;
+  if (e.key === 'ArrowRight' && !nextBtn.disabled){ e.preventDefault(); go(S.i+1); }
+  else if (e.key === 'ArrowLeft' && S.i>0){ e.preventDefault(); go(S.i-1); }
+  else if (e.key.toLowerCase() === 'n') toggleNotes();
+  else if (e.key.toLowerCase() === 'f') toggleFS();
+});
+go(0);
+</script>
+</body>
+</html>
